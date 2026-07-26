@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import '../models/doctor.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../models/appointment.dart';
+import '../models/doctor.dart';
 import '../services/firestore_service.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
@@ -16,6 +18,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final FirestoreService firestoreService = FirestoreService();
+  final FirebaseAuth auth = FirebaseAuth.instance;
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController ageController = TextEditingController();
@@ -225,17 +228,31 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                       return;
                     }
 
+                    if (auth.currentUser == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Please login first."),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
                     Appointment appointment = Appointment(
+                      patientId: auth.currentUser!.uid,
                       patientName: nameController.text.trim(),
                       age: int.parse(ageController.text.trim()),
                       gender: gender,
                       phone: phoneController.text.trim(),
                       email: emailController.text.trim(),
                       reason: reasonController.text.trim(),
+                      doctorId: widget.doctor.id,
                       doctorName: widget.doctor.name,
                       appointmentDate:
                           "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
                       appointmentTime: selectedTime!.format(context),
+                      status: "Pending",
+                      doctorRemarks: "",
                     );
 
                     try {
@@ -245,7 +262,9 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text("Appointment Booked Successfully!"),
+                          content: Text(
+                            "Appointment request submitted.\nWaiting for doctor's approval.",
+                          ),
                           backgroundColor: Colors.green,
                         ),
                       );
@@ -254,9 +273,14 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                     } catch (e) {
                       if (!mounted) return;
 
+                      String message = e.toString().replaceFirst(
+                        "Exception: ",
+                        "",
+                      );
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text("Error: $e"),
+                          content: Text(message),
                           backgroundColor: Colors.red,
                         ),
                       );

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'firebase_options.dart';
-import 'screens/doctor_list_screen.dart';
+import 'screens/login_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,7 +21,7 @@ class MediAssistApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'MediAssist',
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
-      home: DoctorListScreen(),
+      home: const LoginScreen(),
     );
   }
 }
