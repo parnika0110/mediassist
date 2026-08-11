@@ -95,4 +95,10 @@ The application is actively being developed, with individual modules being imple
 
 ## Disclaimer
 
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
+
+=======
 MediAssist is an academic project and is not intended to replace professional medical advice, diagnosis, or treatment.
+
