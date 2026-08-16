@@ -101,4 +101,8 @@ samples, guidance on mobile development, and a full API reference.
 
 =======
 MediAssist is an academic project and is not intended to replace professional medical advice, diagnosis, or treatment.
+
+
+=======
 Last updated: August 2026
+
