@@ -1,280 +1,187 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../services/auth_service.dart';
+import 'profile_setup_screen.dart';
+import 'doctor_profile_setup_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final String role;
+
+  const RegisterScreen({
+    super.key,
+    required this.role,
+  });
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _emailController = TextEditingController();
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final TextEditingController _passwordController = TextEditingController();
 
-  final TextEditingController nameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController =
-      TextEditingController();
+  final AuthService _authService = AuthService();
 
-  final TextEditingController specializationController =
-      TextEditingController();
-  final TextEditingController hospitalController = TextEditingController();
-  final TextEditingController experienceController = TextEditingController();
-  final TextEditingController consultationFeeController =
-      TextEditingController();
+  bool _loading = false;
 
-  String role = "patient";
-  bool isLoading = false;
-  bool obscurePassword = true;
-  bool obscureConfirmPassword = true;
-
-  @override
-  void dispose() {
-    nameController.dispose();
-    emailController.dispose();
-    passwordController.dispose();
-    confirmPasswordController.dispose();
-    specializationController.dispose();
-    hospitalController.dispose();
-    experienceController.dispose();
-    consultationFeeController.dispose();
-    super.dispose();
-  }
-
-  Future<void> register() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    if (passwordController.text != confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Passwords do not match"),
-          backgroundColor: Colors.red,
+  InputDecoration fieldDecoration(
+    String label,
+    IconData icon,
+  ) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Colors.white70),
+      prefixIcon: Icon(icon, color: Colors.white70),
+      enabledBorder: OutlineInputBorder(
+        borderSide: const BorderSide(color: Colors.white24),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: const BorderSide(
+          color: Color(0xFF06B6D4),
+          width: 2,
         ),
-      );
-      return;
-    }
-
-    setState(() {
-      isLoading = true;
-    });
-
-    try {
-      UserCredential userCredential = await _auth
-          .createUserWithEmailAndPassword(
-            email: emailController.text.trim(),
-            password: passwordController.text.trim(),
-          );
-
-      final uid = userCredential.user!.uid;
-
-      Map<String, dynamic> userData = {
-        "name": nameController.text.trim(),
-        "email": emailController.text.trim(),
-        "role": role,
-      };
-
-      if (role == "doctor") {
-        userData.addAll({
-          "specialization": specializationController.text.trim(),
-          "hospital": hospitalController.text.trim(),
-          "experience": int.tryParse(experienceController.text.trim()) ?? 0,
-          "consultationFee":
-              int.tryParse(consultationFeeController.text.trim()) ?? 0,
-          "rating": 0.0,
-          "image": "",
-        });
-      }
-
-      await _firestore.collection("users").doc(uid).set(userData);
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Registration Successful"),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      Navigator.pop(context);
-    } on FirebaseAuthException catch (e) {
-      String message = "Registration Failed";
-
-      if (e.code == "email-already-in-use") {
-        message = "Email already exists";
-      } else if (e.code == "weak-password") {
-        message = "Password should be at least 6 characters";
-      } else if (e.code == "invalid-email") {
-        message = "Invalid Email";
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-      );
-    }
-
-    if (mounted) {
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
-
-  Widget buildField({
-    required TextEditingController controller,
-    required String label,
-    bool obscure = false,
-    TextInputType keyboard = TextInputType.text,
-    Widget? suffixIcon,
-    String? prefixText,
-    String? suffixText,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextFormField(
-        controller: controller,
-        obscureText: obscure,
-        keyboardType: keyboard,
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return "Please enter $label";
-          }
-          return null;
-        },
-        decoration: InputDecoration(
-          labelText: label,
-          prefixText: prefixText,
-          suffixText: suffixText,
-          suffixIcon: suffixIcon,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
+        borderRadius: BorderRadius.circular(12),
       ),
     );
   }
 
+  Future<void> registerUser() async {
+    try {
+      setState(() {
+        _loading = true;
+      });
+
+      final user = await _authService.register(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      if (user != null) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Account Created Successfully"),
+          ),
+        );
+
+        if (widget.role == "doctor") {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const DoctorProfileSetupScreen(),
+            ),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const ProfileSetupScreen(),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bool isDoctor = widget.role == "doctor";
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Register"), centerTitle: true),
+      backgroundColor: const Color(0xFF121212),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          isDoctor ? "Doctor Registration" : "Create Account",
+        ),
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              const Icon(Icons.local_hospital, size: 90, color: Colors.blue),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            const SizedBox(height: 20),
 
-              const SizedBox(height: 25),
+            Icon(
+              isDoctor
+                  ? Icons.medical_services
+                  : Icons.person_add_alt_1,
+              size: 90,
+              color: const Color(0xFF06B6D4),
+            ),
 
-              buildField(controller: nameController, label: "Full Name"),
+            const SizedBox(height: 20),
 
-              buildField(
-                controller: emailController,
-                label: "Email",
-                keyboard: TextInputType.emailAddress,
+            Card(
+              color: const Color(0xFF1E1E1E),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _emailController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: fieldDecoration(
+                        "Email",
+                        Icons.email,
+                      ),
+                    ),
 
-              buildField(
-                controller: passwordController,
-                label: "Password",
-                obscure: obscurePassword,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    obscurePassword ? Icons.visibility : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      obscurePassword = !obscurePassword;
-                    });
-                  },
-                ),
-              ),
+                    const SizedBox(height: 20),
 
-              buildField(
-                controller: confirmPasswordController,
-                label: "Confirm Password",
-                obscure: obscureConfirmPassword,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    obscureConfirmPassword
-                        ? Icons.visibility
-                        : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      obscureConfirmPassword = !obscureConfirmPassword;
-                    });
-                  },
-                ),
-              ),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: fieldDecoration(
+                        "Password",
+                        Icons.lock,
+                      ),
+                    ),
 
-              DropdownButtonFormField<String>(
-                value: role,
-                decoration: InputDecoration(
-                  labelText: "Role",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                items: const [
-                  DropdownMenuItem(value: "patient", child: Text("Patient")),
-                  DropdownMenuItem(value: "doctor", child: Text("Doctor")),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    role = value!;
-                  });
-                },
-              ),
+                    const SizedBox(height: 25),
 
-              const SizedBox(height: 20),
-
-              if (role == "doctor") ...[
-                buildField(
-                  controller: specializationController,
-                  label: "Specialization",
-                ),
-
-                buildField(controller: hospitalController, label: "Hospital"),
-
-                buildField(
-                  controller: experienceController,
-                  label: "Experience",
-                  keyboard: TextInputType.number,
-                  suffixText: " Years",
-                ),
-
-                buildField(
-                  controller: consultationFeeController,
-                  label: "Consultation Fee",
-                  keyboard: TextInputType.number,
-                  prefixText: "Rs ",
-                ),
-              ],
-
-              const SizedBox(height: 25),
-
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : register,
-                  child: isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Register", style: TextStyle(fontSize: 18)),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: _loading ? null : registerUser,
+                        child: _loading
+                            ? const CircularProgressIndicator()
+                            : Text(
+                                isDoctor
+                                    ? "Register as Doctor"
+                                    : "Create Account",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

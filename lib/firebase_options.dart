@@ -23,20 +23,11 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -49,20 +40,45 @@ class DefaultFirebaseOptions {
     }
   }
 
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyCwhW_cfZyVKsGlkeMizmb8wyftDpaLyyo',
+    appId: '1:845572128747:ios:eec6298bcbe8ef65ffe3ae',
+    messagingSenderId: '845572128747',
+    projectId: 'mediassist-ae070',
+    storageBucket: 'mediassist-ae070.firebasestorage.app',
+    iosBundleId: 'com.example.mediassist',
+  );
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyCwhW_cfZyVKsGlkeMizmb8wyftDpaLyyo',
+    appId: '1:845572128747:ios:eec6298bcbe8ef65ffe3ae',
+    messagingSenderId: '845572128747',
+    projectId: 'mediassist-ae070',
+    storageBucket: 'mediassist-ae070.firebasestorage.app',
+    iosBundleId: 'com.example.mediassist',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyBIcNrRWIVOMff3EtnyvdtEcF-gluPOJdE',
+    appId: '1:845572128747:web:306d8a3bbf490758ffe3ae',
+    messagingSenderId: '845572128747',
+    projectId: 'mediassist-ae070',
+    authDomain: 'mediassist-ae070.firebaseapp.com',
+    storageBucket: 'mediassist-ae070.firebasestorage.app',
+  );
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAsEOnHUCGCZuFN3TA999dukUkNIFIjufc',
-    appId: '1:457159980115:web:65f6bb7c7d2e2235c582a6',
-    messagingSenderId: '457159980115',
-    projectId: 'mediassist-d199a',
-    authDomain: 'mediassist-d199a.firebaseapp.com',
-    storageBucket: 'mediassist-d199a.firebasestorage.app',
+    apiKey: 'AIzaSyBIcNrRWIVOMff3EtnyvdtEcF-gluPOJdE',
+    appId: '1:845572128747:web:306d8a3bbf490758ffe3ae',
+    messagingSenderId: '845572128747',
+    projectId: 'mediassist-ae070',
+    authDomain: 'mediassist-ae070.firebaseapp.com',
+    storageBucket: 'mediassist-ae070.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAKtMzUXObE-NJDcy8fJEhIKQdLxGmb0e4',
-    appId: '1:457159980115:android:dc857fb9abc82623c582a6',
-    messagingSenderId: '457159980115',
-    projectId: 'mediassist-d199a',
-    storageBucket: 'mediassist-d199a.firebasestorage.app',
+    apiKey: 'AIzaSyAVhKKFAf9EGjEVxlv85CWKaY3qypWLRWU',
+    appId: '1:845572128747:android:47cc444576b9ea67ffe3ae',
+    messagingSenderId: '845572128747',
+    projectId: 'mediassist-ae070',
+    storageBucket: 'mediassist-ae070.firebasestorage.app',
   );
 }

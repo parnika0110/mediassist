@@ -1,192 +1,360 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import '../theme/app_colors.dart';
+import '../services/auth_service.dart';
 import 'register_screen.dart';
+import 'main_navigation_screen.dart';
 import 'doctor_dashboard_screen.dart';
-import 'doctor_list_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final String role;
+
+  const LoginScreen({
+    super.key,
+    required this.role,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _emailController =
+      TextEditingController();
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final TextEditingController _passwordController =
+      TextEditingController();
 
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
 
-  bool isLoading = false;
-  bool obscurePassword = true;
+  bool _loading = false;
 
-  @override
-  void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> login() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      isLoading = true;
-    });
-
+  Future<void> loginUser() async {
     try {
-      UserCredential credential = await _auth.signInWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
+      setState(() {
+        _loading = true;
+      });
+
+      final user = await _authService.login(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
       );
 
-      final uid = credential.user!.uid;
-
-      final doc = await _firestore.collection("users").doc(uid).get();
-
-      if (!doc.exists) {
-        throw Exception("User data not found.");
+      if (user == null) {
+        throw Exception("Login Failed");
       }
 
-      final data = doc.data()!;
-      final role = data["role"];
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        throw Exception("User record not found.");
+      }
+
+      final data = userDoc.data()!;
+      final actualRole = data["role"] ?? "patient";
+
+      if (actualRole != widget.role) {
+        await _authService.logout();
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "This account is registered as $actualRole.",
+            ),
+          ),
+        );
+
+        return;
+      }
 
       if (!mounted) return;
 
-      if (role == "doctor") {
+      if (widget.role == "doctor") {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const DoctorDashboardScreen()),
+          MaterialPageRoute(
+            builder: (_) => const DoctorDashboardScreen(),
+          ),
         );
       } else {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => DoctorListScreen()),
+          MaterialPageRoute(
+            builder: (_) => const MainNavigationScreen(),
+          ),
         );
       }
-    } on FirebaseAuthException catch (e) {
-      String message = "Login Failed";
-
-      if (e.code == "invalid-credential") {
-        message = "Invalid email or password";
-      } else if (e.code == "user-not-found") {
-        message = "User not found";
-      } else if (e.code == "wrong-password") {
-        message = "Incorrect password";
-      }
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.red),
-      );
     } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-      );
-    }
-
-    if (mounted) {
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
-
-  Widget buildField({
-    required TextEditingController controller,
-    required String label,
-    bool obscure = false,
-    TextInputType keyboard = TextInputType.text,
-    Widget? suffixIcon,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: TextFormField(
-        controller: controller,
-        obscureText: obscure,
-        keyboardType: keyboard,
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return "Please enter $label";
-          }
-          return null;
-        },
-        decoration: InputDecoration(
-          labelText: label,
-          suffixIcon: suffixIcon,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        SnackBar(
+          content: Text(e.toString()),
         ),
-      ),
-    );
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool isDoctor = widget.role == "doctor";
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Login"), centerTitle: true),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
+backgroundColor: AppColors.background,      
+body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              const Icon(Icons.local_hospital, size: 90, color: Colors.blue),
+              const SizedBox(height: 40),
 
-              const SizedBox(height: 30),
+              Container(
+  height: 110,
+  width: 110,
+  decoration: BoxDecoration(
+    color: (isDoctor
+            ? AppColors.doctorGreen
+            : AppColors.patientBlue)
+        .withOpacity(0.15),
+    borderRadius: BorderRadius.circular(28),
+  ),
+  child: Icon(
+    isDoctor
+        ? Icons.medical_services_rounded
+        : Icons.local_hospital_rounded,
+    size: 65,
+    color: isDoctor
+        ? AppColors.doctorGreen
+        : AppColors.patientBlue,
+  ),
+),
 
-              buildField(
-                controller: emailController,
-                label: "Email",
-                keyboard: TextInputType.emailAddress,
+              const SizedBox(height: 15),
+
+              const Text(
+  "Welcome Back",
+  style: TextStyle(
+    fontSize: 34,
+    fontWeight: FontWeight.bold,
+    color: Colors.white,
+  ),
+),
+              const SizedBox(height: 10),
+
+              Text(
+  isDoctor
+      ? "Doctor Portal"
+      : "Patient Portal",
+  style: const TextStyle(
+    fontSize: 18,
+    color: AppColors.secondary,
+  ),
+),
+
+              const SizedBox(height: 40),
+
+              Container(
+  decoration: BoxDecoration(
+    color: AppColors.card,
+    borderRadius: BorderRadius.circular(24),
+    border: Border.all(
+      color: Colors.white10,
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.35),
+        blurRadius: 18,
+        offset: const Offset(0, 8),
+      ),
+    ],
+  ),
+
+  child: Padding(
+    padding: const EdgeInsets.all(24),
+
+    child: Column(
+      children: [
+                      TextField(
+  controller: _emailController,
+
+  style: const TextStyle(
+    color: Colors.white,
+    fontSize: 16,
+  ),
+
+  decoration: InputDecoration(
+    labelText: "Email",
+    labelStyle: const TextStyle(
+      color: Colors.white70,
+    ),
+
+    filled: true,
+    fillColor: const Color(0xFF20293A),
+
+    prefixIcon: const Icon(Icons.email),
+    prefixIconColor: Colors.white70,
+
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(
+        color: Colors.white12,
+      ),
+    ),
+
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: BorderSide(
+        color: isDoctor
+            ? AppColors.doctorGreen
+            : AppColors.patientBlue,
+        width: 2,
+      ),
+    ),
+  ),
+),
+
+                      const SizedBox(height: 20),
+
+                      TextField(
+  controller: _passwordController,
+obscureText: true,
+
+decoration: InputDecoration(
+  labelText: "Password",
+
+  labelStyle: const TextStyle(
+    color: Colors.white70,
+  ),
+
+  filled: true,
+  fillColor: const Color(0xFF20293A),
+
+  prefixIcon: const Icon(Icons.lock_outline),
+  prefixIconColor: Colors.white70,
+
+  enabledBorder: OutlineInputBorder(
+    borderRadius: BorderRadius.circular(16),
+    borderSide: const BorderSide(
+      color: Colors.white12,
+    ),
+  ),
+
+  focusedBorder: OutlineInputBorder(
+    borderRadius: BorderRadius.circular(16),
+    borderSide: BorderSide(
+      color: isDoctor
+          ? AppColors.doctorGreen
+          : AppColors.patientBlue,
+      width: 2,
+    ),
+  ),
+),
+),
+
+                      const SizedBox(height: 25),
+
+                      SizedBox(
+  width: double.infinity,
+  height: 58,
+  child: ElevatedButton(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: isDoctor
+          ? AppColors.doctorGreen
+          : AppColors.patientBlue,
+
+      foregroundColor: Colors.white,
+
+      elevation: 0,
+
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+      ),
+    ),
+
+    onPressed: _loading ? null : loginUser,
+
+    child: _loading
+        ? const SizedBox(
+            height: 22,
+            width: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: Colors.white,
+            ),
+          )
+        : Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+
+              Icon(
+                isDoctor
+                    ? Icons.medical_services
+                    : Icons.login,
+                size: 22,
               ),
 
-              buildField(
-                controller: passwordController,
-                label: "Password",
-                obscure: obscurePassword,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    obscurePassword ? Icons.visibility : Icons.visibility_off,
+              const SizedBox(width: 10),
+
+              Text(
+                isDoctor
+                    ? "Login as Doctor"
+                    : "Login as Patient",
+
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+  ),
+),
+
+                      const SizedBox(height: 15),
+
+                      Column(
+  children: [
+    const Text(
+      "Don't have an account?",
+      style: TextStyle(fontSize: 16),
+    ),
+    TextButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RegisterScreen(
+              role: widget.role,
+            ),
+          ),
+        );
+      },
+      child: Text(
+        isDoctor
+            ? "Register as Doctor"
+            : "Register as Patient",
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    ),
+  ],
+),
+                    ],
                   ),
-                  onPressed: () {
-                    setState(() {
-                      obscurePassword = !obscurePassword;
-                    });
-                  },
                 ),
-              ),
-
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : login,
-                  child: isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Login", style: TextStyle(fontSize: 18)),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                  );
-                },
-                child: const Text("Don't have an account? Register"),
               ),
             ],
           ),
