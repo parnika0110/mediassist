@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../services/notification_service.dart';
+import '../services/firestore_notification_service.dart';
 
 class NotificationScreen extends StatelessWidget {
   NotificationScreen({super.key});
@@ -50,8 +50,16 @@ class NotificationScreen extends StatelessWidget {
         stream: notificationService.getNotifications(userId),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return const Center(child: Text("Something went wrong"));
-          }
+  return Center(
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Text(
+        snapshot.error.toString(),
+        style: const TextStyle(color: Colors.red),
+      ),
+    ),
+  );
+}
 
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -153,14 +161,21 @@ class NotificationScreen extends StatelessWidget {
                   child: ListTile(
                     leading: Icon(icon, color: iconColor),
                     title: Text(
-                      title,
-                      style: TextStyle(
-                        fontWeight: isRead
-                            ? FontWeight.normal
-                            : FontWeight.bold,
-                      ),
-                    ),
-                    subtitle: Text(message),
+  title,
+  style: TextStyle(
+    color: Colors.black,
+    fontSize: 16,
+    fontWeight:
+        isRead ? FontWeight.normal : FontWeight.bold,
+  ),
+),
+
+subtitle: Text(
+  message,
+  style: const TextStyle(
+    color: Colors.black87,
+  ),
+),
                     trailing: !isRead
                         ? const Icon(Icons.circle, color: Colors.red, size: 10)
                         : null,

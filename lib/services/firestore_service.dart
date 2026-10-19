@@ -1,16 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../models/appointment.dart';
 import '../models/doctor.dart';
 import '../models/notification_model.dart';
-import 'notification_service.dart';
-import 'email_service.dart';
+
+import 'firestore_notification_service.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final NotificationService _notificationService = NotificationService();
-  final EmailService _emailService = EmailService();
 
+  // Book Appointment
   Future<void> bookAppointment(Appointment appointment) async {
+    // Check whether the selected doctor already has an appointment
+    // at the same date and time that is Pending or Approved.
     final existing = await _firestore
         .collection('appointments')
         .where('doctorId', isEqualTo: appointment.doctorId)
@@ -26,6 +29,7 @@ class FirestoreService {
     }
 
     final data = appointment.toMap();
+
     data['createdAt'] = FieldValue.serverTimestamp();
 
     await _firestore.collection('appointments').add(data);
@@ -38,22 +42,9 @@ class FirestoreService {
             "Your appointment with Dr. ${appointment.doctorName} has been booked successfully.",
       ),
     );
-
-    try {
-      await _emailService.sendAppointmentEmail(
-        toName: appointment.patientName,
-        toEmail: appointment.email,
-        message:
-            "Your appointment request has been submitted successfully and is waiting for the doctor's approval.",
-        doctorName: appointment.doctorName,
-        appointmentDate: appointment.appointmentDate,
-        appointmentTime: appointment.appointmentTime,
-      );
-    } catch (e) {
-      print("Email Error: $e");
-    }
   }
 
+  // Approve Appointment
   Future<void> approveAppointment(
     String appointmentId,
     String patientId,
@@ -71,30 +62,9 @@ class FirestoreService {
         message: "Dr. $doctorName has approved your appointment.",
       ),
     );
-
-    try {
-      final doc = await _firestore
-          .collection('appointments')
-          .doc(appointmentId)
-          .get();
-
-      if (doc.exists) {
-        final data = doc.data()!;
-
-        await _emailService.sendAppointmentEmail(
-          toName: data['patientName'],
-          toEmail: data['email'],
-          message: "Your appointment has been approved by Dr. $doctorName.",
-          doctorName: doctorName,
-          appointmentDate: data['appointmentDate'],
-          appointmentTime: data['appointmentTime'],
-        );
-      }
-    } catch (e) {
-      print("Email Error: $e");
-    }
   }
 
+  // Reject Appointment
   Future<void> rejectAppointment(
     String appointmentId,
     String patientId,
@@ -113,31 +83,9 @@ class FirestoreService {
         message: "Dr. $doctorName rejected your appointment.\nReason: $remarks",
       ),
     );
-
-    try {
-      final doc = await _firestore
-          .collection('appointments')
-          .doc(appointmentId)
-          .get();
-
-      if (doc.exists) {
-        final data = doc.data()!;
-
-        await _emailService.sendAppointmentEmail(
-          toName: data['patientName'],
-          toEmail: data['email'],
-          message:
-              "Unfortunately, your appointment has been rejected.\n\nReason: $remarks",
-          doctorName: doctorName,
-          appointmentDate: data['appointmentDate'],
-          appointmentTime: data['appointmentTime'],
-        );
-      }
-    } catch (e) {
-      print("Email Error: $e");
-    }
   }
 
+  // Cancel Appointment
   Future<void> cancelAppointment(String appointmentId, String patientId) async {
     await _firestore.collection('appointments').doc(appointmentId).update({
       'status': 'Cancelled',
@@ -151,28 +99,6 @@ class FirestoreService {
         message: "Your appointment has been cancelled successfully.",
       ),
     );
-
-    try {
-      final doc = await _firestore
-          .collection('appointments')
-          .doc(appointmentId)
-          .get();
-
-      if (doc.exists) {
-        final data = doc.data()!;
-
-        await _emailService.sendAppointmentEmail(
-          toName: data['patientName'],
-          toEmail: data['email'],
-          message: "Your appointment has been cancelled successfully.",
-          doctorName: data['doctorName'],
-          appointmentDate: data['appointmentDate'],
-          appointmentTime: data['appointmentTime'],
-        );
-      }
-    } catch (e) {
-      print("Email Error: $e");
-    }
   }
 
   // Submit Doctor Rating
